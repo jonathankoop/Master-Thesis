@@ -106,10 +106,10 @@ data_mult <- data[data$Artist_Names %in% names(multiplesongs),]
 
 ```{r}
 data_wide <- data %>%
-  group_by(Song_ID, Songname, release_date, Song_Pop.2019, Song_Pop.2022, Song_Pop.2023a, Song_Pop.2023b) %>%
+  group_by(Song_ID, Songname, release_date, Song_Pop.2019, Song_Pop.2022, Song_Pop.2023a, Song_Pop.2023b, genre) %>%
   mutate(artist_number = paste0("Artist_", row_number())) %>%
   pivot_wider(
-    id_cols = c(Song_ID, Songname, release_date, Song_Pop.2019, Song_Pop.2022, Song_Pop.2023a, Song_Pop.2023b),
+    id_cols = c(Song_ID, Songname, release_date, Song_Pop.2019, Song_Pop.2022, Song_Pop.2023a, Song_Pop.2023b, genre),
     names_from = artist_number,
     values_from = Artist_Names
   ) %>%
@@ -138,12 +138,17 @@ data_wide %>%
 ```
 
 
-## Subset to Colaborations with Only 2 Artists
+## Subset to Analysis Sample
 
 ```{r}
+# Only keep songs with 2 artists
 data_analysis <- data_wide %>%
   filter(!is.na(Artist_2) & is.na(Artist_3)) %>%
-  select(release_date, Artist_1, Artist_2)
+  select(release_date, Artist_1, Artist_2, genre)
+
+# Remove rows with "classical" in genre
+data_analysis <- data_analysis %>%
+  filter(!grepl("classical", genre, ignore.case = TRUE))
 
 # most prominent Artist_1
 data_analysis %>%
