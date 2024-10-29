@@ -48,8 +48,49 @@ data %>%
 ## Clean Artist Strings
 
 ```{r}
-# Remove leading and trailing quotes and brackets
-data$Artist_Names <- gsub("^['\"]|['\"]$|\\['\\]|\\]$", "", data$Artist_Names)
+data$Artist_Names <- gsub("^[\\['\"]+|[\\['\"]+$", "", data$Artist_Names)
+```
+
+## Add `genre` and `Artist_Popularity` to Data
+
+```{r}
+# df with song_id and genre
+genre <- data_raw %>%
+  select(Song_ID, genre) %>%
+  distinct(Song_ID, .keep_all = TRUE)
+
+# match genre to data
+data <- left_join(data, genre, by = "Song_ID")
+```
+
+
+### Inspect Genre Variable
+```{r}
+sum(is.na(data$genre)) # number of missing values 
+
+# number of observations where genre contains "classical"
+data %>%
+  filter(grepl("classical", genre, ignore.case = TRUE)) %>%
+  nrow()
+```
+
+## Artist Popularity
+```{r}
+# df with artist_names and artist_popularity
+artist_popularity <- data_raw %>%
+  select(Artist_Names, Artist_Popularity) %>%
+  mutate(Artist_Names = gsub("^[\\['\"]+|[\\['\"]+$", "", Artist_Names)) %>%
+  distinct(Artist_Names, .keep_all = TRUE)
+
+# Check distribution of Artist Popularity
+hist(artist_popularity$Artist_Popularity)
+
+```
+
+
+```{r}
+sum(is.na(data$Artist_Popularity))
+sum(is.na(artist_popularity$Artist_Popularity))
 ```
 
 
@@ -96,17 +137,6 @@ data_wide %>%
   nrow()
 ```
 
-## Retrieve Artist Names From List of Colaborations
-
-```{r}
-artists <- data_wide %>%
-  filter(!is.na(Artist_2)) %>%
-  select(starts_with("Artist_")) %>%
-  pivot_longer(cols = everything(), values_drop_na = TRUE) %>%
-  distinct(value) %>%
-  pull()
-```
-
 
 ## Subset to Colaborations with Only 2 Artists
 
@@ -120,6 +150,23 @@ data_analysis %>%
   count(Artist_1) %>%
   arrange(desc(n)) %>%
   head(10)
+```
+
+## Retrieve Artist Names From List of Colaborations
+
+```{r}
+artists <- data_analysis %>%
+  select(starts_with("Artist_")) %>%
+  pivot_longer(cols = everything(), values_drop_na = TRUE) %>%
+  distinct(value) %>%
+  pull()
+
+# add artist popularity to artists
+artist_popularity <- artist_popularity %>%
+  filter(Artist_Names %in% artists)
+
+# distribution of artist popularity
+hist(artist_popularity$Artist_Popularity)
 ```
 
 ## Remove Self-Loops (Artists collaborating with themselves)
@@ -348,8 +395,7 @@ gender_discogs <- function(artist_name, discogs_token) {
 ## Type in Tokens/Keys
 
 ```{r}
-discogs_token <- ""
-api_key <- ""
+load("tokens.RData")
 ```
 
 
@@ -386,12 +432,6 @@ binded <- data.frame(wiki = gender_results_wiki,
 ## Manually Label values
 
 ```{r}
-(artist <- rownames(binded)[50])
-data_sample %>%
-  filter(Artist_1 == artist | Artist_2 == artist)
-```
-
-```{r}
 rownames(binded)
 labels <- c("male", "male", "band", "male", "male", "male", "male", "male", "male", "male", NA, "male", "female", NA, NA, "male", "male", NA, "male",
   "male", "male", "male", "male", "band", NA, "male", "male", "female", "male", "male", "male", "male", "male", "male", "male", "male",
@@ -426,17 +466,76 @@ prop_discogs <- n_discogs / nrow(binded_nona)
 error_rate_wiki <- sum(binded_nona[binded_nona$wiki %in% c("male", "female", "band"),]$wiki != binded_nona[binded_nona$wiki %in% c("male", "female", "band"),]$labels) / nrow(binded_nona[binded_nona$wiki %in% c("male", "female", "band"),])
 error_rate_lastfm <- sum(binded_nona[binded_nona$lastfm %in% c("male", "female", "band"),]$lastfm != binded_nona[binded_nona$lastfm %in% c("male", "female", "band"),]$labels) / nrow(binded_nona[binded_nona$lastfm %in% c("male", "female", "band"),])
 error_rate_discogs <- sum(binded_nona[binded_nona$discogs %in% c("male", "female", "band"),]$discogs != binded_nona[binded_nona$discogs %in% c("male", "female", "band"),]$labels) / nrow(binded_nona[binded_nona$discogs %in% c("male", "female", "band"),])
+
+# proportion of not found cases
+prop_not_found_lastfm <- sum(binded_nona$lastfm %in% c("not found", "no info in bio", "empty bio")) / nrow(binded_nona)
+getwd()
 ```
 
 # Run `gender_lastfm` on all artists
 
-```{r}
+```{r, eval = FALSE}
 t1 <- Sys.time()
 gender_lastfm <- sapply(artists, gender_lastfm)
 t2 <- Sys.time()
 
 # save results
 save(gender_lastfm, file = "gender_lastfm.RData")
+```
+
+```{r}
+load("gender_lastfm.RData")
+```
+
+
+## Summarize Results
+
+```{r}
+table(gender_lastfm)
+```
+
+```{r}
+# get artist names for those that are male or female
+artist_names <- gender_lastfm[gender_lastfm %in% c("male", "female")]
+artist_names <- names(artist_names)
+```
+
+## Check if Bands Collaborate
+
+```{r}
+bands <- names(gender_lastfm[gender_lastfm == "band"])
+
+band_colabs <- data_analysis %>%
+  filter(Artist_1 %in% bands | Artist_2 %in% bands) %>%
+  nrow()
+```
+
+Bands collaborate in `r band_colabs` collaborations.
+
+## Check correlation between artist popularity and success of gender function
+```{r}
+gender_df <- data.frame(Artist_Names = names(gender_lastfm),
+                        gender = gender_lastfm)
+
+# left join gender_lastfm with artist_popularity
+artist_popularity <- left_join(artist_popularity, gender_df, by = "Artist_Names")
+artist_popularity$gender <- as.factor(artist_popularity$gender)
+
+# box plot of Artist_Popularity by gender
+ggplot(artist_popularity, aes(x = gender, y = Artist_Popularity)) +
+  geom_boxplot() +
+  theme_minimal()
+
+sum(is.na(artist_popularity$gender))
+
+# anova test
+anova_test <- aov(Artist_Popularity ~ gender, data = artist_popularity)
+summary(anova_test)
+
+levels(artist_popularity$gender)
+# t-test between c("empty bio", "no info in bio", "not found") and c("male", "female", "band")
+artist_popularity$found <- ifelse(artist_popularity$gender %in% c("empty bio", "no info in bio", "not found"), "not found", "found")
+t.test(Artist_Popularity ~ found, data = artist_popularity)
 ```
 
 
@@ -467,5 +566,9 @@ edgelist <- remify(data_analysis, directed = F, model = "tie")
 effects <- ~ 1
 
 statistics <- remstats(reh = edgelist, tie_effects = effects)
+```
+
+```{r}
+
 ```
 
