@@ -542,6 +542,34 @@ levels(artist_popularity$gender)
 artist_popularity$found <- ifelse(artist_popularity$gender %in% c("empty bio", "no info in bio", "not found"), "not found", "found")
 t.test(Artist_Popularity ~ found, data = artist_popularity)
 ```
+### Plot Proportion of Found Cases by Popularity Threshold
+
+```{r}
+thresholds <- seq(0, 100, by = 2)
+plots <- list()
+props <- matrix(nrow = length(thresholds), ncol = 2)
+for (i in seq_along(thresholds)) {
+  props[i,1] <- thresholds[i]
+  props[i,2] <- artist_popularity %>%
+    filter(Artist_Popularity <= thresholds[i]) %>%
+    select(found) %>%
+    table() %>%
+    prop.table() %>%
+    .["found"]
+}
+
+props <- as.data.frame(props)
+names(props) <- c("threshold", "proportion")
+
+ggplot(props, aes(x = threshold, y = proportion)) +
+  geom_line() +
+  labs(x = "Popularity Threshold", y = "Proportion of Found Cases") +
+  theme_minimal()
+
+# save plot
+ggsave("Plots/popularity_threshold.png", height = 5, width = 7)
+
+```
 
 
 # Simple Network Analysis
