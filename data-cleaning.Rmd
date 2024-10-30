@@ -543,32 +543,63 @@ artist_popularity$found <- ifelse(artist_popularity$gender %in% c("empty bio", "
 t.test(Artist_Popularity ~ found, data = artist_popularity)
 ```
 ### Plot Proportion of Found Cases by Popularity Threshold
-
 ```{r}
-thresholds <- seq(0, 100, by = 2)
-plots <- list()
-props <- matrix(nrow = length(thresholds), ncol = 2)
+thresholds <- seq(0, 100, by = 5)
+props <- as.data.frame(matrix(nrow = length(thresholds), ncol = 4))
+
 for (i in seq_along(thresholds)) {
+  
+  artists_filtered <- artist_popularity %>%
+    filter(Artist_Popularity >= thresholds[i]) %>%
+    select(Artist_Names) %>%
+    pull()
+  
   props[i,1] <- thresholds[i]
-  props[i,2] <- artist_popularity %>%
-    filter(Artist_Popularity <= thresholds[i]) %>%
-    select(found) %>%
-    table() %>%
-    prop.table() %>%
-    .["found"]
+  props[i, c(2,3)] <- artist_popularity_filtered <- artist_popularity %>%
+    filter(Artist_Names %in% artists_filtered) %>%
+    count(found) %>%
+    mutate(proportion = n / sum(n)) %>%
+    filter(found == "found") %>%
+    select(n, proportion)
+  
+  # number of songs in data_analysis by popularity threshold
+  props[i,4] <- data_analysis %>%
+    filter(Artist_1 %in% artists_filtered & Artist_2 %in% artists_filtered) %>%
+    nrow()
+
 }
 
-props <- as.data.frame(props)
-names(props) <- c("threshold", "proportion")
+names(props) <- c("threshold", "n", "proportion", "n_songs")
 
+# plot with proportion of found cases by popularity threshold
 ggplot(props, aes(x = threshold, y = proportion)) +
   geom_line() +
-  labs(x = "Popularity Threshold", y = "Proportion of Found Cases") +
+  labs(x = "Popularity Threshold", y = "Proportion of Found Cases", title = "Proportion of Found Cases by Popularity Threshold") +
   theme_minimal()
 
 # save plot
-ggsave("Plots/popularity_threshold.png", height = 5, width = 7)
+ggsave("Plots/prop_popularity_threshold.png", height = 5, width = 7)
 
+# plot with number of artists by popularity threshold
+ggplot(props, aes(x = threshold, y = n)) +
+  geom_line() +
+  labs(x = "Popularity Threshold", y = "Number of Artists", title = "Number of Found Artists by Popularity Threshold") +
+  theme_minimal()
+
+# save plot
+ggsave("Plots/n_popularity_threshold.png", height = 5, width = 7)
+
+# plot with number of songs by popularity threshold
+ggplot(props, aes(x = threshold, y = n_songs)) +
+  geom_line() +
+  labs(x = "Popularity Threshold", y = "Number of Songs/Events", title = "Number of Songs (Events) by Popularity Threshold") +
+  theme_minimal()
+
+# save plot
+ggsave("Plots/n_songs_popularity_threshold.png", height = 5, width = 7)
+
+# save props table
+save(props, file = "R-Data/proportions-by-pop-thres.RData")
 ```
 
 
