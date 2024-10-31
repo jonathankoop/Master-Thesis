@@ -1,0 +1,296 @@
+---
+title: "Potential Conditions for Shrinkage in REM"
+format: html
+editor: visual
+---
+
+```{r}
+library(pacman)
+p_load(tidyverse)
+```
+
+# 1. Potential Condition
+
+1. Varying the Number of Statistics (IVs)
+2. Varying the Number of Interactions between Statistics
+3. Varying the Number of Events (n)
+4. Varying the Number of Actors in the Data (implying a change of the size of the risk set)
+5. Varying the Size of the Coefficients of the Predictors
+
+Potential Additions
+
+6. Directed vs. Undirected Networks
+
+
+# 2. Implementation of These Conditions in the Data-Generating Function
+
+```{r}
+generate_rem <-function (parameters, # parameters for the model
+                         covar, #  data frame with id, time, and covariates
+                         M, # number of events
+                         directed = FALSE # directed or undirected network
+                         ) 
+{
+  
+  # Create function for automatically generating the formula from the parameter list
+  generate_formula <- function(parameters) {
+    terms <- c("1") # Start with intercept
+    
+    for (name in names(parameters)) {
+      # Detect the pattern and construct terms accordingly
+      if (name == "inertia") {
+        terms <- c(terms, "inertia(scaling = 'std')")
+      } else if (grepl("^difference_", name)) {
+        var <- sub("^difference_", "", name)
+        terms <- c(terms, paste0("difference('", var, "', scaling = 'std')"))
+      } else if (grepl("^same_", name)) {
+        var <- sub("^same_", "", name)
+        terms <- c(terms, paste0("same('", var, "')"))
+      } else if (grepl("^send_", name)) {
+        var <- sub("^send_", "", name)
+        terms <- c(terms, paste0("send('", var, "', scaling = 'std')"))
+      } else if (grepl("^receive_", name)) {
+        var <- sub("^receive_", "", name)
+        terms <- c(terms, paste0("receive('", var, "', scaling = 'std')"))
+      } else if (grepl("^tie_", name)) {
+        var <- sub("^tie_", "", name)
+        terms <- c(terms, paste0("tie('", var, "', scaling = 'std')"))
+      } else if (grepl("^average_", name)) {
+        var <- sub("^average_", "", name)
+        terms <- c(terms, paste0("average('", var, "', scaling = 'std')"))
+      } else if (grepl("^minimum_", name)) {
+        var <- sub("^minimum_", "", name)
+        terms <- c(terms, paste0("minimum('", var, "', scaling = 'std')"))
+      } else if (grepl("^maximum_", name)) {
+        var <- sub("^maximum_", "", name)
+        terms <- c(terms, paste0("maximum('", var, "', scaling = 'std')"))
+      } else if (grepl("^event_", name)) {
+        var <- sub("^event_", "", name)
+        terms <- c(terms, paste0("event('", var, "')"))
+      } else if (grepl("^userStat_", name)) {
+        var <- sub("^userStat_", "", name)
+        terms <- c(terms, paste0("userStat('", var, "')"))
+      } else if (name == "indegreeSender") {
+        terms <- c(terms, "indegreeSender()")
+      } else if (name == "indegreeReceiver") {
+        terms <- c(terms, "indegreeReceiver()")
+      } else if (name == "outdegreeReceiver") {
+        terms <- c(terms, "outdegreeReceiver()")
+      } else if (name == "totaldegreeDyad") {
+        terms <- c(terms, "totaldegreeDyad()")
+      } else if (name == "totaldegreeSender") {
+        terms <- c(terms, "totaldegreeSender()")
+      } else if (name == "totaldegreeReceiver") {
+        terms <- c(terms, "totaldegreeReceiver()")
+      } else if (name == "degreeMin") {
+        terms <- c(terms, "degreeMin()")
+      } else if (name == "degreeMax") {
+        terms <- c(terms, "degreeMax()")
+      } else if (name == "degreeDiff") {
+        terms <- c(terms, "degreeDiff()")
+      } else if (name == "sp") {
+        terms <- c(terms, "sp()")
+      } else if (name == "reciprocity") {
+        terms <- c(terms, "reciprocity()")
+      } else if (name == "otp") {
+        terms <- c(terms, "otp()")
+      } else if (name == "itp") {
+        terms <- c(terms, "itp()")
+      } else if (name == "osp") {
+        terms <- c(terms, "osp()")
+      } else if (name == "isp") {
+        terms <- c(terms, "isp()")
+      } else if (name == "psABBA") {
+        terms <- c(terms, "psABBA()")
+      } else if (name == "psABBY") {
+        terms <- c(terms, "psABBY()")
+      } else if (name == "psABXA") {
+        terms <- c(terms, "psABXA()")
+      } else if (name == "psABXB") {
+        terms <- c(terms, "psABXB()")
+      } else if (name == "psABXY") {
+        terms <- c(terms, "psABXY()")
+      } else if (name == "psABAY") {
+        terms <- c(terms, "psABAY()")
+      } else if (name == "psABAB") {
+        terms <- c(terms, "psABAB()")
+      } else if (name == "rrankSend") {
+        terms <- c(terms, "rrankSend()")
+      } else if (name == "rrankReceive") {
+        terms <- c(terms, "rrankReceive()")
+      } else if (name == "recencySendSender") {
+        terms <- c(terms, "recencySendSender()")
+      } else if (name == "recencySendReceiver") {
+        terms <- c(terms, "recencySendReceiver()")
+      } else if (name == "recencyReceiveSender") {
+        terms <- c(terms, "recencyReceiveSender()")
+      } else if (name == "recencyReceiveReceiver") {
+        terms <- c(terms, "recencyReceiveReceiver()")
+      } else if (name == "recencyContinue") {
+        terms <- c(terms, "recencyContinue()")
+      } else if (name == "FEtype") {
+        terms <- c(terms, "FEtype()")
+      }
+    }
+  
+    # Combine terms into formula
+    formula_text <- paste("~", paste(terms, collapse = " + "))
+    formula <- as.formula(formula_text)
+    return(formula)
+  }
+
+  # Generate the formula
+  formula <- generate_formula(param1)
+  j = 1
+  t <- 0 # time of first event
+  dummy <- data.frame(time = 1, actor1 = 1, actor2 = 2)
+  rehOut <-remify::remify(edgelist = dummy,model = "tie",actors = covar$name,
+                          directed = directed,origin = 0)
+  
+  out <- remstats(reh = rehOut, tie_effects = formula, attr_actors  = covar)
+  riskset<-attributes(out)$riskset
+  adj <- matrix(0, 1, ncol = nrow(riskset)) # adjacency matrix
+  
+  
+    param=parameters
+    
+    for (i in 1:M) {
+      
+      beta <- lapply(param, function(x) {
+        if (class(x) == "function") {
+          x(t)
+        }
+        else {
+          x
+        }
+      })
+      logLambda <- out[dim(out)[1],,] %*% unlist(beta) # log of the rate parameter
+      
+      lambda <- exp(logLambda) # rate parameter
+      dt <- rexp(1, sum(lambda)) # time to next event
+      d <- sample(1:nrow(lambda), 1, prob = lambda/sum(lambda)) # next event
+      if (i+((j-1)*M) == 1) {
+        # initialize edgelist for the first event
+        edgelist <- cbind(time = (t + dt), actor1 = riskset[d, 
+                                                            1], actor2 = riskset[d, 2])
+      }
+      else {
+        # bind the new event to the edgelist for next events
+        edgelist <- rbind(edgelist, cbind(time = (t + dt), 
+                                          actor1 = riskset[d, 1], actor2 = riskset[d, 
+                                                                                   2]))
+      }
+      edgelist <- as.data.frame(edgelist) # convert to data frame
+      edgelist$time <- as.numeric(edgelist$time) # convert time to numeric
+      t <- max(edgelist$time) # update time
+      adj <- rbind(adj, adj[i+((j-1)*M), ]) # add a row to the adjacency matrix
+      adj[i + 1+((j-1)*M), d] <- adj[i + 1+((j-1)*M), d] + 1 # update the adjacency matrix (1 for the event)
+      cat(i+((j-1)*M), "\r") # print the current iteration
+      if (i < M) {
+        dummy$time <- dummy$time + t # update the time of the dummy event
+        edgelistTemp <- rbind(edgelist, dummy) # create temp edgelist to calculate endo stats
+        rehOut <-remify::remify(edgelist = edgelistTemp, model = "tie",actors = covar$name,
+                                directed = directed,origin = 0) # remify the temp edgelist
+        
+        
+        
+        if ( i+((j-1)*M)<= M ){
+          out <- remstats(reh = rehOut, tie_effects = formula, attr_actors  = covar) # calculate endo stats
+          } 
+        else{
+          stop<-  i+((j-1)*M)
+          start<- i+((j-1)*M)-M+1
+          
+          out <- remstats(reh = rehOut, tie_effects = formula, attr_actors = covar,memory = "full",start =start, stop =stop , memory_value=400 )
+        }
+      }
+    }
+  edgelist
+}
+```
+
+# 3. Example
+
+## Generate Data
+
+```{r}
+covar <- data.frame(name = 1:10, time = 0, 
+                    z1 = rnorm(n = 10), # normal variable
+                    z2 = sample(0:1, 10, replace = TRUE)) # binary variable
+
+param1 <- list(
+  # exogenous effects
+  "baseline" = -4, 
+  "inertia" = 0.5,
+  "same_z2" = -0.5)
+
+constant <- list()
+
+
+M <- 1000
+edgelist <- generate_rem(param1,covar,M)
+```
+
+## Estimate Coefficients
+
+```{r}
+stats <- generate_formula(param1)
+reh_tie <- remify::remify(edgelist = edgelist, model = "tie",actors = covar$name,directed = TRUE,origin = 0)
+
+out <- remstats(reh = reh_tie, tie_effects = stats, attr_actors  = covar)
+fit <- remstimate::remstimate(reh = reh_tie, stats = out,method = "MLE")
+
+summary(fit)
+```
+
+```{r}
+param1 <- list(
+  # exogenous effects
+  "baseline" = -4, 
+  #"send_z1" = 0.5,
+  "receive_z1" = 0.5)
+  "tie_z1" = 0.5,
+  "same_z2" = -0.5,
+  "difference_z1" = 0.5,
+  "average_z1" = 0.5,
+  "minimum_z1" = 0.5,
+  "maximum_z1" = 0.5,
+  "event_z1" = 0.5,
+  "userStat_z1" = 0.5,
+  
+  # endogenous effects
+  #"FEtype" = 0.5, # not defined when the number of event types is smaller than 2.
+  "inertia" = 0.5,
+  #"indegreeSender" = 0.5,
+  #"indegreeReceiver" = 0.5,
+  #"outdegreeReceiver" = 0.5,
+  "totaldegreeDyad" = 0.5,
+  #"totaldegreeSender" = 0.5,
+  #"totaldegreeReceiver" = 0.5,
+  "degreeMin" = 0.5,
+  "degreeMax" = 0.5,
+  "degreeDiff" = 0.5,
+  "sp" = 0.5,
+  #"reciprocity" = 0.5,
+  #"otp" = 0.5,
+  #"itp" = 0.5,
+  #"osp" = 0.5,
+  #"isp" = 0.5,
+  #"psABBA" = 0.5,
+  #"psABBY" = 0.5,
+  #"psABXA" = 0.5,
+  #"psABXB" = 0.5,
+  #"psABXY" = 0.5,
+  "psABAY" = 0.5,
+  "psABAB" = 0.5,
+  #"rrankSend" = 0.5,
+  #"rrankReceive" = 0.5,
+  #"recencySendSender" = 0.5,
+  #"recencySendReceiver" = 0.5,
+  #"recencyReceiveSender" = 0.5,
+  #"recencyReceiveReceiver" = 0.5,
+  "recencyContinue" = 0.5
+  )
+
+```
+
