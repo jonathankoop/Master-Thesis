@@ -6,7 +6,7 @@ editor: visual
 
 ```{r}
 library(pacman)
-p_load(tidyverse)
+p_load(tidyverse, remstats, remify, remstimate)
 ```
 
 # 1. Potential Condition
@@ -34,113 +34,114 @@ generate_rem <-function (parameters, # parameters for the model
   
   # Create function for automatically generating the formula from the parameter list
   generate_formula <- function(parameters) {
-    terms <- c("1") # Start with intercept
-    
-    for (name in names(parameters)) {
-      # Detect the pattern and construct terms accordingly
-      if (name == "inertia") {
-        terms <- c(terms, "inertia(scaling = 'std')")
-      } else if (grepl("^difference_", name)) {
-        var <- sub("^difference_", "", name)
-        terms <- c(terms, paste0("difference('", var, "', scaling = 'std')"))
-      } else if (grepl("^same_", name)) {
-        var <- sub("^same_", "", name)
-        terms <- c(terms, paste0("same('", var, "')"))
-      } else if (grepl("^send_", name)) {
-        var <- sub("^send_", "", name)
-        terms <- c(terms, paste0("send('", var, "', scaling = 'std')"))
-      } else if (grepl("^receive_", name)) {
-        var <- sub("^receive_", "", name)
-        terms <- c(terms, paste0("receive('", var, "', scaling = 'std')"))
-      } else if (grepl("^tie_", name)) {
-        var <- sub("^tie_", "", name)
-        terms <- c(terms, paste0("tie('", var, "', scaling = 'std')"))
-      } else if (grepl("^average_", name)) {
-        var <- sub("^average_", "", name)
-        terms <- c(terms, paste0("average('", var, "', scaling = 'std')"))
-      } else if (grepl("^minimum_", name)) {
-        var <- sub("^minimum_", "", name)
-        terms <- c(terms, paste0("minimum('", var, "', scaling = 'std')"))
-      } else if (grepl("^maximum_", name)) {
-        var <- sub("^maximum_", "", name)
-        terms <- c(terms, paste0("maximum('", var, "', scaling = 'std')"))
-      } else if (grepl("^event_", name)) {
-        var <- sub("^event_", "", name)
-        terms <- c(terms, paste0("event('", var, "')"))
-      } else if (grepl("^userStat_", name)) {
-        var <- sub("^userStat_", "", name)
-        terms <- c(terms, paste0("userStat('", var, "')"))
-      } else if (name == "indegreeSender") {
-        terms <- c(terms, "indegreeSender()")
-      } else if (name == "indegreeReceiver") {
-        terms <- c(terms, "indegreeReceiver()")
-      } else if (name == "outdegreeReceiver") {
-        terms <- c(terms, "outdegreeReceiver()")
-      } else if (name == "totaldegreeDyad") {
-        terms <- c(terms, "totaldegreeDyad()")
-      } else if (name == "totaldegreeSender") {
-        terms <- c(terms, "totaldegreeSender()")
-      } else if (name == "totaldegreeReceiver") {
-        terms <- c(terms, "totaldegreeReceiver()")
-      } else if (name == "degreeMin") {
-        terms <- c(terms, "degreeMin()")
-      } else if (name == "degreeMax") {
-        terms <- c(terms, "degreeMax()")
-      } else if (name == "degreeDiff") {
-        terms <- c(terms, "degreeDiff()")
-      } else if (name == "sp") {
-        terms <- c(terms, "sp()")
-      } else if (name == "reciprocity") {
-        terms <- c(terms, "reciprocity()")
-      } else if (name == "otp") {
-        terms <- c(terms, "otp()")
-      } else if (name == "itp") {
-        terms <- c(terms, "itp()")
-      } else if (name == "osp") {
-        terms <- c(terms, "osp()")
-      } else if (name == "isp") {
-        terms <- c(terms, "isp()")
-      } else if (name == "psABBA") {
-        terms <- c(terms, "psABBA()")
-      } else if (name == "psABBY") {
-        terms <- c(terms, "psABBY()")
-      } else if (name == "psABXA") {
-        terms <- c(terms, "psABXA()")
-      } else if (name == "psABXB") {
-        terms <- c(terms, "psABXB()")
-      } else if (name == "psABXY") {
-        terms <- c(terms, "psABXY()")
-      } else if (name == "psABAY") {
-        terms <- c(terms, "psABAY()")
-      } else if (name == "psABAB") {
-        terms <- c(terms, "psABAB()")
-      } else if (name == "rrankSend") {
-        terms <- c(terms, "rrankSend()")
-      } else if (name == "rrankReceive") {
-        terms <- c(terms, "rrankReceive()")
-      } else if (name == "recencySendSender") {
-        terms <- c(terms, "recencySendSender()")
-      } else if (name == "recencySendReceiver") {
-        terms <- c(terms, "recencySendReceiver()")
-      } else if (name == "recencyReceiveSender") {
-        terms <- c(terms, "recencyReceiveSender()")
-      } else if (name == "recencyReceiveReceiver") {
-        terms <- c(terms, "recencyReceiveReceiver()")
-      } else if (name == "recencyContinue") {
-        terms <- c(terms, "recencyContinue()")
-      } else if (name == "FEtype") {
-        terms <- c(terms, "FEtype()")
-      }
-    }
+  terms <- c("1") # Start with intercept
   
-    # Combine terms into formula
-    formula_text <- paste("~", paste(terms, collapse = " + "))
-    formula <- as.formula(formula_text)
-    return(formula)
+  for (name in names(parameters)) {
+    # Detect the statistic and add to the formula
+    if (name == "inertia") {
+      terms <- c(terms, "inertia(scaling = 'std')")
+    } else if (grepl("^difference_", name)) {
+      var <- sub("^difference_", "", name)
+      terms <- c(terms, paste0("difference('", var, "', scaling = 'std')"))
+    } else if (grepl("^same_", name)) {
+      var <- sub("^same_", "", name)
+      terms <- c(terms, paste0("same('", var, "')"))
+    } else if (grepl("^send_", name)) {
+      var <- sub("^send_", "", name)
+      terms <- c(terms, paste0("send('", var, "', scaling = 'std')"))
+    } else if (grepl("^receive_", name)) {
+      var <- sub("^receive_", "", name)
+      terms <- c(terms, paste0("receive('", var, "', scaling = 'std')"))
+    } else if (grepl("^tie_", name)) {
+      var <- sub("^tie_", "", name)
+      terms <- c(terms, paste0("tie('", var, "', scaling = 'std')"))
+    } else if (grepl("^average_", name)) {
+      var <- sub("^average_", "", name)
+      terms <- c(terms, paste0("average('", var, "', scaling = 'std')"))
+    } else if (grepl("^minimum_", name)) {
+      var <- sub("^minimum_", "", name)
+      terms <- c(terms, paste0("minimum('", var, "', scaling = 'std')"))
+    } else if (grepl("^maximum_", name)) {
+      var <- sub("^maximum_", "", name)
+      terms <- c(terms, paste0("maximum('", var, "', scaling = 'std')"))
+    } else if (grepl("^event_", name)) {
+      var <- sub("^event_", "", name)
+      terms <- c(terms, paste0("event('", var, "')"))
+    } else if (grepl("^userStat_", name)) {
+      var <- sub("^userStat_", "", name)
+      terms <- c(terms, paste0("userStat('", var, "')"))
+    } else if (name == "indegreeSender") {
+      terms <- c(terms, "indegreeSender(scaling = 'std')")
+    } else if (name == "indegreeReceiver") {
+      terms <- c(terms, "indegreeReceiver(scaling = 'std')")
+    } else if (name == "outdegreeReceiver") {
+      terms <- c(terms, "outdegreeReceiver(scaling = 'std')")
+    } else if (name == "totaldegreeDyad") {
+      terms <- c(terms, "totaldegreeDyad(scaling = 'std')")
+    } else if (name == "totaldegreeSender") {
+      terms <- c(terms, "totaldegreeSender(scaling = 'std')")
+    } else if (name == "totaldegreeReceiver") {
+      terms <- c(terms, "totaldegreeReceiver(scaling = 'std')")
+    } else if (name == "degreeMin") {
+      terms <- c(terms, "degreeMin(scaling = 'std')")
+    } else if (name == "degreeMax") {
+      terms <- c(terms, "degreeMax(scaling = 'std')")
+    } else if (name == "degreeDiff") {
+      terms <- c(terms, "degreeDiff(scaling = 'std')")
+    } else if (name == "sp") {
+      terms <- c(terms, "sp(scaling = 'std')")
+    } else if (name == "reciprocity") {
+      terms <- c(terms, "reciprocity(scaling = 'std')")
+    } else if (name == "otp") {
+      terms <- c(terms, "otp(scaling = 'std')")
+    } else if (name == "itp") {
+      terms <- c(terms, "itp(scaling = 'std')")
+    } else if (name == "osp") {
+      terms <- c(terms, "osp(scaling = 'std')")
+    } else if (name == "isp") {
+      terms <- c(terms, "isp(scaling = 'std')")
+    } else if (name == "psABBA") {
+      terms <- c(terms, "psABBA()")
+    } else if (name == "psABBY") {
+      terms <- c(terms, "psABBY()")
+    } else if (name == "psABXA") {
+      terms <- c(terms, "psABXA()")
+    } else if (name == "psABXB") {
+      terms <- c(terms, "psABXB()")
+    } else if (name == "psABXY") {
+      terms <- c(terms, "psABXY()")
+    } else if (name == "psABAY") {
+      terms <- c(terms, "psABAY()")
+    } else if (name == "psABAB") {
+      terms <- c(terms, "psABAB()")
+    } else if (name == "rrankSend") {
+      terms <- c(terms, "rrankSend()")
+    } else if (name == "rrankReceive") {
+      terms <- c(terms, "rrankReceive()")
+    } else if (name == "recencySendSender") {
+      terms <- c(terms, "recencySendSender()")
+    } else if (name == "recencySendReceiver") {
+      terms <- c(terms, "recencySendReceiver()")
+    } else if (name == "recencyReceiveSender") {
+      terms <- c(terms, "recencyReceiveSender()")
+    } else if (name == "recencyReceiveReceiver") {
+      terms <- c(terms, "recencyReceiveReceiver()")
+    } else if (name == "recencyContinue") {
+      terms <- c(terms, "recencyContinue()")
+    } else if (name == "FEtype") {
+      terms <- c(terms, "FEtype()")
+    }
   }
+  
+  # Combine terms into formula
+  formula_text <- paste("~", paste(terms, collapse = " + "))
+  formula <- as.formula(formula_text)
+  return(formula)
+}
+
 
   # Generate the formula
-  formula <- generate_formula(param1)
+  formula <- generate_formula(parameters)
   j = 1
   t <- 0 # time of first event
   dummy <- data.frame(time = 1, actor1 = 1, actor2 = 2)
@@ -216,26 +217,51 @@ generate_rem <-function (parameters, # parameters for the model
 ```{r}
 covar <- data.frame(name = 1:10, time = 0, 
                     z1 = rnorm(n = 10), # normal variable
-                    z2 = sample(0:1, 10, replace = TRUE)) # binary variable
+                    z2 = sample(0:1, 10, replace = TRUE), # binary variable
+                    z3 = rpois(n = 10, lambda = 1), # poisson variable
+                    z4 = rbinom(n = 10, size = 1, prob = 0.5)) # bernoulli variable
 
-param1 <- list(
+tie_effects(directed = F
+            ,endogenous = T
+            )
+
+parameters <- list(
   # exogenous effects
-  "baseline" = -4, 
-  "inertia" = 0.5,
-  "same_z2" = -0.5)
-
-constant <- list()
+  "baseline" = -4,
+  #"tie_z1" = 0.8,
+  "same_z2" = 0.1,
+  "difference_z1" = 0.2,
+  "average_z4" = 0.3,
+  "minimum_z3" = 0.4,
+  "maximum_z1" = 0.5,
+  #"event_z1" = 0.6, #Error in FUN(X[[i]], ...) : Length of vector 'x' in event() does not match number of events in edgelist
+  #"userStat_z1" = 0.7, # Error in FUN(X[[i]], ...) : Number of columns of matrix 'x' in userStat() does not match number of dyads in risk set
+  
+  
+  # endogenous effects
+  #"FEtype" = -0.1, # not defined when the number of event types is smaller than 2.
+  "inertia" = 0.1,
+  "totaldegreeDyad" = 0.2,
+  "degreeMin" = 0.3,
+  #"degreeMax" = 0.4, # can't simulate together with other degree statistics
+  #"degreeDiff" = 0.5 # can't simulate together with other degree statistics
+  "sp" = 0.6,
+  "psABAY" = 0.7,
+  "psABAB" = 0.8
+  #"recencyContinue" = 0.9 # leads to wrong estimates
+  
+  )
 
 
 M <- 1000
-edgelist <- generate_rem(param1,covar,M)
+edgelist <- generate_rem(parameters,covar,M)
 ```
 
 ## Estimate Coefficients
 
 ```{r}
-stats <- generate_formula(param1)
-reh_tie <- remify::remify(edgelist = edgelist, model = "tie",actors = covar$name,directed = TRUE,origin = 0)
+stats <- generate_formula(parameters)
+reh_tie <- remify::remify(edgelist = edgelist, model = "tie",actors = covar$name,directed = FALSE,origin = 0)
 
 out <- remstats(reh = reh_tie, tie_effects = stats, attr_actors  = covar)
 fit <- remstimate::remstimate(reh = reh_tie, stats = out,method = "MLE")
