@@ -21,24 +21,123 @@ Potential Additions
 
 6. Directed vs. Undirected Networks
 
+# 2. Function for Generating Data
 
-# 2. Implementation of These Conditions in the Data-Generating Function
+# 2.1 Function to Generate Formula
 
 ```{r}
-generate_rem <-function (parameters, # parameters for the model
-                         covar, #  data frame with id, time, and covariates
-                         M, # number of events
-                         directed = FALSE # directed or undirected network
-                         ) 
-{
-  
-  # Create function for automatically generating the formula from the parameter list
-  generate_formula <- function(parameters) {
+generate_formula <- function(parameters) {
   terms <- c("1") # Start with intercept
   
   for (name in names(parameters)) {
-    # Detect the statistic and add to the formula
-    if (name == "inertia") {
+    # Detect interaction terms (e.g., "same_z2:difference_z1")
+    if (grepl(":", name)) {
+      # Split interaction terms
+      components <- strsplit(name, ":")[[1]]
+      
+      # Process each component of the interaction
+      processed_components <- sapply(components, function(component) {
+        if (grepl("^difference_", component)) {
+          var <- sub("^difference_", "", component)
+          return(paste0("difference('", var, "', scaling = 'std')"))
+        } else if (grepl("^same_", component)) {
+          var <- sub("^same_", "", component)
+          return(paste0("same('", var, "')"))
+        } else if (grepl("^send_", component)) {
+          var <- sub("^send_", "", component)
+          return(paste0("send('", var, "', scaling = 'std')"))
+        } else if (grepl("^receive_", component)) {
+          var <- sub("^receive_", "", component)
+          return(paste0("receive('", var, "', scaling = 'std')"))
+        } else if (grepl("^tie_", component)) {
+          var <- sub("^tie_", "", component)
+          return(paste0("tie('", var, "', scaling = 'std')"))
+        } else if (grepl("^average_", component)) {
+          var <- sub("^average_", "", component)
+          return(paste0("average('", var, "', scaling = 'std')"))
+        } else if (grepl("^minimum_", component)) {
+          var <- sub("^minimum_", "", component)
+          return(paste0("minimum('", var, "', scaling = 'std')"))
+        } else if (grepl("^maximum_", component)) {
+          var <- sub("^maximum_", "", component)
+          return(paste0("maximum('", var, "', scaling = 'std')"))
+        } else if (grepl("^event_", component)) {
+          var <- sub("^event_", "", component)
+          return(paste0("event('", var, "')"))
+        } else if (grepl("^userStat_", component)) {
+          var <- sub("^userStat_", "", component)
+          return(paste0("userStat('", var, "')"))
+        } else if (component == "inertia") {
+          return("inertia(scaling = 'std')")
+        } else if (component == "indegreeSender") {
+          return("indegreeSender(scaling = 'std')")
+        } else if (component == "indegreeReceiver") {
+          return("indegreeReceiver(scaling = 'std')")
+        } else if (component == "outdegreeReceiver") {
+          return("outdegreeReceiver(scaling = 'std')")
+        } else if (component == "totaldegreeDyad") {
+          return("totaldegreeDyad(scaling = 'std')")
+        } else if (component == "totaldegreeSender") {
+          return("totaldegreeSender(scaling = 'std')")
+        } else if (component == "totaldegreeReceiver") {
+          return("totaldegreeReceiver(scaling = 'std')")
+        } else if (component == "degreeMin") {
+          return("degreeMin(scaling = 'std')")
+        } else if (component == "degreeMax") {
+          return("degreeMax(scaling = 'std')")
+        } else if (component == "degreeDiff") {
+          return("degreeDiff(scaling = 'std')")
+        } else if (component == "sp") {
+          return("sp(scaling = 'std')")
+        } else if (component == "reciprocity") {
+          return("reciprocity(scaling = 'std')")
+        } else if (component == "otp") {
+          return("otp(scaling = 'std')")
+        } else if (component == "itp") {
+          return("itp(scaling = 'std')")
+        } else if (component == "osp") {
+          return("osp(scaling = 'std')")
+        } else if (component == "isp") {
+          return("isp(scaling = 'std')")
+        } else if (component == "psABBA") {
+          return("psABBA()")
+        } else if (component == "psABBY") {
+          return("psABBY()")
+        } else if (component == "psABXA") {
+          return("psABXA()")
+        } else if (component == "psABXB") {
+          return("psABXB()")
+        } else if (component == "psABXY") {
+          return("psABXY()")
+        } else if (component == "psABAY") {
+          return("psABAY()")
+        } else if (component == "psABAB") {
+          return("psABAB()")
+        } else if (component == "rrankSend") {
+          return("rrankSend()")
+        } else if (component == "rrankReceive") {
+          return("rrankReceive()")
+        } else if (component == "recencySendSender") {
+          return("recencySendSender()")
+        } else if (component == "recencySendReceiver") {
+          return("recencySendReceiver()")
+        } else if (component == "recencyReceiveSender") {
+          return("recencyReceiveSender()")
+        } else if (component == "recencyReceiveReceiver") {
+          return("recencyReceiveReceiver()")
+        } else if (component == "recencyContinue") {
+          return("recencyContinue()")
+        } else if (component == "FEtype") {
+          return("FEtype()")
+        } else {
+          return("") # Handle or skip any unrecognized components
+        }
+      })
+      
+      # Add interaction term by joining the processed components with `:`
+      terms <- c(terms, paste(processed_components, collapse = " : "))
+      
+    } else if (name == "inertia") {
       terms <- c(terms, "inertia(scaling = 'std')")
     } else if (grepl("^difference_", name)) {
       var <- sub("^difference_", "", name)
@@ -138,8 +237,18 @@ generate_rem <-function (parameters, # parameters for the model
   formula <- as.formula(formula_text)
   return(formula)
 }
+```
 
 
+# 2.2 Function to Generate Data
+
+```{r}
+generate_rem <-function (parameters, # parameters for the model
+                         covar, #  data frame with id, time, and covariates
+                         M, # number of events
+                         directed = FALSE # directed or undirected network
+                         ) 
+{
   # Generate the formula
   formula <- generate_formula(parameters)
   j = 1
@@ -251,6 +360,14 @@ parameters <- list(
   #"recencyContinue" = 0.9 # leads to wrong estimates
   
   )
+
+parameters <- list("baseline" = 0,
+                   "same_z2" = 0.1,
+                   "difference_z1" = 0.2,
+                   "inertia" = 0.3,
+                   "average_z1" = 0.4,
+                   "same_z2:difference_z1" = 0.1,
+                   "inertia:average_z1" = 0.2)
 
 
 M <- 1000
